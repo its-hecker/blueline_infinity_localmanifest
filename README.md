@@ -25,7 +25,7 @@ env -u HECKER_BUILD_JOBS USE_RBE=true WITH_GAPPS=false PIXEL3_DEV_USB_ADB=true \
   bash .repo/local_manifests/build.sh
 ```
 
-The first build is **vanilla** (`WITH_GAPPS=false`) to keep Pixel 3's limited physical partition budget. The build script uses `lunch infinity_blueline cp2a userdebug`, validates generated SELinux kernel settings, prepares vendor blobs, and calls `m bacon`. Do not flash before inspecting the build log, partition sizes and device-specific boot diagnostics.
+The first build is **vanilla** (`WITH_GAPPS=false`) to isolate Android 17 boot issues and keep within the Pixel 3's limited retrofit-partition budget. Infinity-X supports GApps, but these should be enabled only after a first successful boot. To compile its built-in GApps variant, rerun with `WITH_GAPPS=true` (the helper verifies GMS source paths). GApps can exceed the Pixel 3's fixed system/product partitions; do not bypass image-size or super-partition errors. The build script uses `lunch infinity_blueline cp2a userdebug`, validates generated SELinux kernel settings, prepares vendor blobs, and calls `m bacon`. Do not flash before inspecting the build log, partition sizes and device-specific boot diagnostics.
 
 ## USB ADB and root debugging
 
@@ -43,11 +43,42 @@ On the connected development phone, use `adb devices -l` and `adb shell id` (exp
 
 For a secure build, set `PIXEL3_DEV_USB_ADB=false` and use a secure release product configuration. Confirm `ro.adb.secure` and `ro.debuggable` in the actual built images before distributing.
 
+## Boot-critical checks applied
+
+- **Citadel/Keymaster:** install Pixel 3 `ueventd.hardware.rc` to `/vendor/etc/ueventd.rc`, the path parsed by Android 17 ueventd. This supplies `/dev/citadel0`, `/dev/qseecom`, and secure-element device-node ownership.
+- **Linux 4.9 fscrypt:** use the pinned Android 17 `xbill9/android_system_vold` compatibility fork for its legacy session-keyring fallback. The upstream Infinity-X `system_vold` project is removed by manifest name to avoid duplicate checkouts.
+- **Display:** require `ro.hardware.hwcomposer=qcom` in the generated **vendor** build.prop and a real Qualcomm HWC module.
+- **BPF/network:** retain the previously delayed `netd` start at `bpf.progs_loaded=1`. This does not eliminate unsupported BPF helper/program failures on 4.9; inspect early logs if networking still aborts.
+- **LiveDisplay:** disable the crashing legacy SDM LiveDisplay service during initial boot; this does not remove the Qualcomm hardware composer.
+- **Kernel:** check generated `b1c1_defconfig` for SELinux, networking hooks and requisite vendor modules; Android 17 on Pixel 3 still requires hardware tests.
+- **ADB:** keep early USB/root debugging restricted to developer images. ADB at the Google logo depends on reaching second-stage init, and is not proof of a healthy boot.
+- **Partition handling:** retain Pixel 3's physical and retrofit group partition sizes. Do not enlarge them for GApps without matching physical hardware.
+
+## GApps build after a vanilla boot
+
+```bash
+cd ~/infinityx-blueline
+git -C .repo/local_manifests pull --ff-only origin main
+repo sync -c --fail-fast --no-clone-bundle --no-tags
+env -u HECKER_BUILD_JOBS USE_RBE=true WITH_GAPPS=true PIXEL3_DEV_USB_ADB=true \
+  bash .repo/local_manifests/build.sh
+```
+
+Only test the resulting GApps ZIP after it passes build image-size validation. Do **not** flash a separate GApps ZIP over the Infinity-X GApps build.
+
+## Early boot test
+
+On a PC with Android platform tools, test `adb devices`, `adb shell id`,
+`adb shell getprop init.svc.vendor.citadeld`, `adb shell getprop sys.boot_completed`,
+`adb logcat -b all -v threadtime`, and `adb shell dmesg`. If ADB never enumerates,
+first-stage failures, broken USB gadget setup or kernel issues remain possible.
+Testing is required on actual Pixel 3 hardware, especially if different SKU variants behave differently.
+
 ## Known bring-up limitations
 
 - The earlier LineageOS 24.0 Pixel 3 build reached the Google logo but did not boot successfully. The root cause is not confirmed.
 - Infinity-X's customized `system/core`, `system/vold` and Connectivity sources have **not** yet been validated with legacy 4.9 fscrypt.
-- The manifest reuses pinned legacy SDM845 display, GPS, audio, and GCC binutils; reassess pins during subsequent builds.
+- The manifest reuses pinned legacy SDM845 display, GPS, audio, and GCC binutils, plus a Linux-4.9-compatible vold fork; reassess pins during subsequent builds.
 - The vendor helper modifies generated vendor blobs in the synced checkout; it does not mutate the upstream GitHub repositories.
 - `PIXEL3_DEV_USB_ADB=true` is development-only. Disable it for a public release.
 
