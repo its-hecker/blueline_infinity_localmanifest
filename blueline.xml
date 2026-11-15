@@ -45,9 +45,17 @@
            remote="hecker-pixel3" revision="111258a10e017f067b27e6cfcea7619d753f3309"
            upstream="refs/heads/lineage-19.1" clone-depth="1" />
 
+  <!-- Android 17 Vold's standard fscrypt ioctls are not implemented by the
+       Pixel 3 Linux 4.9 kernel. The xbill9 version adds a working fallback
+       to the legacy session keyring (as in our Lineage 24.0 port). -->
+  <remove-project name="ProjectInfinity-X/system_vold" />
+  <project name="xbill9/android_system_vold" path="system/vold"
+           remote="hecker-pixel3" revision="fce7dadf6510b8ac728eca0f77672daa582e2bb8"
+           upstream="refs/heads/lineage-24.0" groups="pdk" />
+
   <!-- Early Android 17 bpf and zygote adaptations for the 4.9 backport.
-       Keep Infinity's core, vold and Connectivity sources for the first
-       compilation; runtime compatibility is still unverified. -->
+       Keep Infinity's core and Connectivity initially, while using the
+       legacy-fscrypt Vold fallback; runtime compatibility still needs tests. -->
   <remove-project name="LineageOS/android_system_bpf" />
   <project name="xbill9/android_system_bpf" path="system/bpf"
            remote="hecker-pixel3" revision="72b37ef9d9dba32ddddcd6bb62970c4cb9f42523"
