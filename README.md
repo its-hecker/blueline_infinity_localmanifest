@@ -27,6 +27,22 @@ env -u HECKER_BUILD_JOBS USE_RBE=true WITH_GAPPS=false PIXEL3_DEV_USB_ADB=true \
 
 The first build is **vanilla** (`WITH_GAPPS=false`) to keep Pixel 3's limited physical partition budget. The build script uses `lunch infinity_blueline cp2a userdebug`, validates generated SELinux kernel settings, prepares vendor blobs, and calls `m bacon`. Do not flash before inspecting the build log, partition sizes and device-specific boot diagnostics.
 
+## USB ADB and root debugging
+
+The `infinity_blueline` **userdebug** product defaults to `PIXEL3_DEV_USB_ADB=true` for this diagnostic port. The build helper also exports this flag. Debug mode uses:
+
+- `WITH_ADB_INSECURE := true`, so Infinity-X emits `ro.adb.secure=0`
+- `PRODUCT_NOT_DEBUGGABLE_IN_USERDEBUG := false` to preserve `ro.debuggable=1`
+- `persist.sys.usb.config=adb` to request USB debugging even before settings/UI finish booting
+- A guarded Pixel 3 init hook at `post-fs`, before the normal `early-boot` stage, that brings up a USB configfs ADB gadget and sets `service.adb.root=1` **before** starting adbd
+- Guarded `early-boot` and `boot` actions that reassert development ADB during framework bootloops
+
+On the connected development phone, use `adb devices -l` and `adb shell id` (expect `uid=0(root)` once the debug hook has run). If the daemon is not already root but is alive, use `adb root`, then `adb shell id`; for early logs, try `adb logcat -b all -v threadtime` and `adb shell dmesg`.
+
+**Limitations:** ADB at the Google logo is an intended result, **not guaranteed**. The post-fs hook cannot run during a kernel crash, first-stage init crash, failed partition mount, or before USB configfs and adbd can be initialized. A failed USB enumeration does not establish the precise boot failure. These settings allow root USB access without host authorization: use only on a physical development handset, do not distribute a public image with this mode active.
+
+For a secure build, set `PIXEL3_DEV_USB_ADB=false` and use a secure release product configuration. Confirm `ro.adb.secure` and `ro.debuggable` in the actual built images before distributing.
+
 ## Known bring-up limitations
 
 - The earlier LineageOS 24.0 Pixel 3 build reached the Google logo but did not boot successfully. The root cause is not confirmed.
