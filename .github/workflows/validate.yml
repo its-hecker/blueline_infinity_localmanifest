@@ -25,9 +25,16 @@ jobs:
           projects = root.findall("project")
           paths = [item.attrib["path"] for item in projects]
           assert len(paths) == len(set(paths)), "duplicate local manifest project paths"
-          for key in ("device/google/crosshatch", "kernel/google/msm-4.9", "vendor/google/blueline"):
+          for key in ("device/google/crosshatch", "kernel/google/msm-4.9", "vendor/google/blueline",
+                      "system/vold", "system/bpf", "system/zygote"):
               assert key in paths, f"missing {key}"
-          print(f"Manifest XML: PASS ({len(projects)} projects)")
+          names = {p.attrib['path']: p.attrib['name'] for p in projects}
+          assert names['system/vold'] == 'xbill9/android_system_vold'
+          removed = [p.attrib.get('name') for p in root.findall('remove-project')]
+          assert 'system_vold' in removed, "Infinity upstream system_vold must be removed first"
+          assert 'LineageOS/android_system_bpf' in removed
+          assert 'platform/system/zygote' in removed
+          print(f"Manifest XML: PASS ({len(projects)} projects; legacy-fscrypt vold pinned)")
           PY
           bash -n build.sh
           python3 -m py_compile scripts/prepare-vendor.py scripts/check-kernel-config.py
