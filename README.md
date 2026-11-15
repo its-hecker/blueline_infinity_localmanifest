@@ -9,7 +9,7 @@ Unofficial Android 17 device bring-up for the Google Pixel 3, maintained by **He
 - [Vendor](https://github.com/its-hecker/blueline_infinity_vendor) — Pixel 3 blobs from the `lineage-24.0` branch. Git LFS is required.
 - This manifest — pinned Android 17 compatibility dependencies, build helper and vendor fixups.
 
-The three source repos must be populated before `repo sync`; their empty GitHub placeholders are **not** sufficient for a build.
+The three source repositories have now been imported to their `main` branches. Verify that the device product, kernel Makefile and vendor makefile exist before syncing; the import workflows are one-time bootstraps.
 
 ## Clean ServerHive checkout
 
