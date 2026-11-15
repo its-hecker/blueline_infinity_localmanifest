@@ -48,7 +48,7 @@
   <!-- Android 17 Vold's standard fscrypt ioctls are not implemented by the
        Pixel 3 Linux 4.9 kernel. The xbill9 version adds a working fallback
        to the legacy session keyring (as in our Lineage 24.0 port). -->
-  <remove-project name="ProjectInfinity-X/system_vold" />
+  <remove-project name="system_vold" />
   <project name="xbill9/android_system_vold" path="system/vold"
            remote="hecker-pixel3" revision="fce7dadf6510b8ac728eca0f77672daa582e2bb8"
            upstream="refs/heads/lineage-24.0" groups="pdk" />
