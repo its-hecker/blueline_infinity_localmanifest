@@ -54,12 +54,15 @@ fi
 grep -Fq '/etc/ueventd.rc' device/google/crosshatch/device.mk || {
   echo "Missing Android 17 loaded ueventd path; Citadel will fail." >&2; missing=1;
 }
-grep -Fq 'ro.hardware.hwcomposer=qcom' device/google/crosshatch/device.mk || {
-  echo "Missing Qualcomm HWC selector; expect framebuffer failure." >&2; missing=1;
+grep -Fq '$(call soong_config_set_bool,libui,legacy_gralloc,true)' device/google/crosshatch/device-lineage.mk || {
+  echo "Missing the legacy mapper from the bootable Pixel 3 baseline." >&2; missing=1;
 }
-grep -Fq 'on property:bpf.progs_loaded=1' device/google/crosshatch/init.hardware.rc || {
-  echo "Missing delayed netd start; old kernel BPF load may crash netd." >&2; missing=1;
-}
+if grep -Fq 'ro.hardware.hwcomposer=qcom' device/google/crosshatch/device.mk; then
+  echo "Unexpected post-first-boot HWC selector in rollback source." >&2; missing=1;
+fi
+if grep -Fq 'on property:bpf.progs_loaded=1' device/google/crosshatch/init.hardware.rc; then
+  echo "Unexpected post-first-boot netd startup override in rollback source." >&2; missing=1;
+fi
 grep -Fq 'installKeyLegacy' system/vold/KeyUtil.cpp || {
   echo "Missing Linux 4.9 fscrypt keyring fallback in system/vold." >&2; missing=1;
 }
@@ -84,13 +87,9 @@ echo "Build log: $LOG"
   python3 "$SCRIPT_DIR/scripts/check-kernel-config.py" "$ANDROID_PRODUCT_OUT/obj/KERNEL_OBJ/.config"
   m bacon
   # A bootable graphics stack needs HWC2, not just software UI rendering.
-  prop="$ANDROID_PRODUCT_OUT/vendor/build.prop"
   hwc="$ANDROID_PRODUCT_OUT/vendor/lib64/hw/hwcomposer.qcom.so"
-  if [[ ! -f "$prop" ]] || ! grep -qx 'ro.hardware.hwcomposer=qcom' "$prop"; then
-    echo "Missing Qualcomm HWC vendor property: $prop" >&2; exit 1
-  fi
   if [[ ! -f "$hwc" ]]; then echo "Missing Qualcomm hardware composer: $hwc" >&2; exit 1; fi
-  echo "Pixel 3 Qualcomm hardware composer validation: PASS"
+  echo "Pixel 3 Qualcomm hardware composer module: PRESENT (runtime selection not yet verified)"
   # Android 17 now reads vendor permissions from vendor/etc/ueventd.rc.
   ueventd="$ANDROID_PRODUCT_OUT/vendor/etc/ueventd.rc"
   if [[ ! -f "$ueventd" ]] || ! grep -q '/dev/citadel0' "$ueventd" ||

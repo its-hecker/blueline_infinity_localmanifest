@@ -47,8 +47,8 @@ For a secure build, set `PIXEL3_DEV_USB_ADB=false` and use a secure release prod
 
 - **Citadel/Keymaster:** install Pixel 3 `ueventd.hardware.rc` to `/vendor/etc/ueventd.rc`, the path parsed by Android 17 ueventd. This supplies `/dev/citadel0`, `/dev/qseecom`, and secure-element device-node ownership.
 - **Linux 4.9 fscrypt:** use the pinned Android 17 `xbill9/android_system_vold` compatibility fork for its legacy session-keyring fallback. The upstream Infinity-X `system_vold` project is removed by manifest name to avoid duplicate checkouts.
-- **Display:** require `ro.hardware.hwcomposer=qcom` in the generated **vendor** build.prop and a real Qualcomm HWC module.
-- **BPF/network:** retain the previously delayed `netd` start at `bpf.progs_loaded=1`. This does not eliminate unsupported BPF helper/program failures on 4.9; inspect early logs if networking still aborts.
+- **Display:** restore the early legacy-gralloc mapper setting and keep the Qualcomm HWC module packaged. The later forced `ro.hardware.hwcomposer=qcom` selector was rolled back pending boot-log analysis.
+- **BPF/network:** restore the earlier init sequence; the post-first-boot `netd` property-trigger experiment was removed. Inspect BPF and `netd` startup from the new logs.
 - **LiveDisplay:** disable the crashing legacy SDM LiveDisplay service during initial boot; this does not remove the Qualcomm hardware composer.
 - **Kernel:** check generated `b1c1_defconfig` for SELinux, networking hooks and requisite vendor modules; Android 17 on Pixel 3 still requires hardware tests.
 - **ADB:** keep early USB/root debugging restricted to developer images. ADB at the Google logo depends on reaching second-stage init, and is not proof of a healthy boot.
@@ -76,7 +76,7 @@ Testing is required on actual Pixel 3 hardware, especially if different SKU vari
 
 ## Known bring-up limitations
 
-- The earlier LineageOS 24.0 Pixel 3 build reached the Google logo but did not boot successfully. The root cause is not confirmed.
+- A LineageOS 24.0 Pixel 3 `eng` build dated November 14 booted after formatting data, but subsequent variants regressed. Infinity-X boot remains unverified; its hardware tree has now been aligned with that earlier baseline.
 - Infinity-X's customized `system/core`, `system/vold` and Connectivity sources have **not** yet been validated with legacy 4.9 fscrypt.
 - The manifest reuses pinned legacy SDM845 display, GPS, audio, and GCC binutils, plus a Linux-4.9-compatible vold fork; reassess pins during subsequent builds.
 - The vendor helper modifies generated vendor blobs in the synced checkout; it does not mutate the upstream GitHub repositories.
